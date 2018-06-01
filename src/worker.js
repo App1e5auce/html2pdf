@@ -158,7 +158,7 @@ Worker.prototype.toCanvas = function toCanvas() {
   var canvas_array = [];
   return this.thenList(prereqs).then(function toCanvas_main() {
     // Handle old-fashioned 'onrendered' argument.
-    var options = _extends({}, this.opt.html2canvas);
+    var options = Object.assign({}, this.opt.html2canvas);
     delete options.onrendered;
 
     this.toPages();

@@ -33,7 +33,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 
 
-var _extends$1 = Object.assign || function (target) {
+var _extends = Object.assign || function (target) {
   for (var i = 1; i < arguments.length; i++) {
     var source = arguments[i];
 
@@ -114,7 +114,7 @@ var unitConvert = function unitConvert(obj, k) {
 
 var Worker = function Worker(opt) {
   // Create the root parent for the proto chain, and the starting Worker.
-  var root = _extends$1(Worker.convert(Promise.resolve()), JSON.parse(JSON.stringify(Worker.template)));
+  var root = _extends(Worker.convert(Promise.resolve()), JSON.parse(JSON.stringify(Worker.template)));
   var self = Worker.convert(Promise.resolve(), root);
 
   // Set progress, optional settings, and return.
@@ -604,7 +604,7 @@ Worker.prototype.thenCore = function thenCore(onFulfilled, onRejected, thenBase)
 
   // Cast self into a Promise to avoid polyfills recursively defining `then`.
   var isNative = Promise.toString().indexOf('[native code]') !== -1 && Promise.name === 'Promise';
-  var selfPromise = isNative ? self : Worker.convert(_extends$1({}, self), Promise.prototype);
+  var selfPromise = isNative ? self : Worker.convert(_extends({}, self), Promise.prototype);
 
   // Return the promise, after casting it into a Worker and preserving props.
   var returnVal = thenBase.call(selfPromise, onFulfilled, onRejected);
