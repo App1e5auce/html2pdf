@@ -25,6 +25,7 @@ Worker.prototype.toContainer = function toContainer() {
       if(next_break){
           var parent = next_break.parentElement;
           if((parent.offsetHeight + 100) < space_left) space_left = 0;
+          if( space_left ) el.parentElement.parentElement.classList.add('end-page');
           el.style.height = space_left + 'px';
       }
     }, this);
