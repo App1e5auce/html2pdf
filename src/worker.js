@@ -125,20 +125,77 @@ Worker.prototype.toContainer = function toContainer() {
   });
 };
 
+Worker.prototype.toPages = function toPages() {
+    var rows = this.prop.container.querySelectorAll('.report-row');
+    var new_container = document.createElement('div');
+    var page_num = 0;
+
+    var pages = new Array();
+    Array.prototype.forEach.call(rows, function rows_loop(row, i) {
+        if(pages[page_num] == undefined){
+            pages[page_num] = document.createElement('div');
+            pages[page_num].className = "pdf-report pdf-page page-"+page_num;
+        }
+        var row_copy = row.cloneNode(true);
+        pages[page_num].appendChild(row_copy);
+        if(row.classList.contains('end-page'))page_num++;
+    }, this);
+
+    Array.prototype.forEach.call(pages, function pages_loop(page, i) {
+        new_container.appendChild(page);
+    }, this);
+
+    this.prop.container.innerHTML = new_container.innerHTML;
+};
+
 Worker.prototype.toCanvas = function toCanvas() {
   // Set up function prerequisites.
-  var prereqs = [
-    function checkContainer() { return document.body.contains(this.prop.container)
-                               || this.toContainer(); }
-  ];
+  var prereqs = [function checkContainer() {
+    return document.body.contains(this.prop.container) || this.toContainer();
+  }];
 
   // Fulfill prereqs then create the canvas.
+  var canvas_array = [];
   return this.thenList(prereqs).then(function toCanvas_main() {
     // Handle old-fashioned 'onrendered' argument.
-    var options = Object.assign({}, this.opt.html2canvas);
+    var options = _extends({}, this.opt.html2canvas);
     delete options.onrendered;
 
-    return html2canvas(this.prop.container, options);
+    this.toPages();
+
+    var canvas_pages = this.prop.container.querySelectorAll('.pdf-page');
+    Array.prototype.forEach.call(canvas_pages, function canvas_page_loop(page, i) {
+        canvas_array[i] = html2canvas(page, options);
+    }, this);
+
+    return Promise.all(canvas_array).then(function(data){
+        return data;
+    });
+
+    // return new Promise(function(resolve, reject){
+    //     console.log('die');
+    // });
+
+    // return new Promise(function(resolve, reject) {
+    //     console.log('in promise');
+    //     console.log(canvas_pages);
+    //     var chain = Promise.resolve();
+    //     var real_count = 0;
+    //     for(var i = 0; i < canvas_pages.length; i++) {
+    //         chain = chain.then(function() {
+    //             console.log('starting ' + real_count);
+    //             console.log(canvas_pages[real_count]);
+    //             return html2canvas(canvas_pages[real_count], options).then(function(canvas){
+    //                 canvas_array[real_count] = canvas;
+    //                 console.log('ending ' + real_count +', we need ' + (canvas_pages.length - 1));
+    //                 if(real_count === (canvas_pages.length - 1)) resolve(canvas_array);
+    //                 real_count++;
+    //             });
+    //         });
+    //     }
+    // });
+
+    //return html2canvas(this.prop.container, options);
   }).then(function toCanvas_post(canvas) {
     // Handle old-fashioned 'onrendered' argument.
     var onRendered = this.opt.html2canvas.onrendered || function () {};
@@ -165,9 +222,9 @@ Worker.prototype.toImg = function toImg() {
 
 Worker.prototype.toPdf = function toPdf() {
   // Set up function prerequisites.
-  var prereqs = [
-    function checkCanvas() { return this.prop.canvas || this.toCanvas(); }
-  ];
+  var prereqs = [function checkCanvas() {
+    return this.prop.canvas || this.toCanvas();
+  }];
 
   // Fulfill prereqs then create the image.
   return this.thenList(prereqs).then(function toPdf_main() {
@@ -176,10 +233,10 @@ Worker.prototype.toPdf = function toPdf() {
     var opt = this.opt;
 
     // Calculate the number of pages.
-    var ctx = canvas.getContext('2d');
-    var pxFullHeight = canvas.height;
-    var pxPageHeight = Math.floor(canvas.width * this.prop.pageSize.inner.ratio);
-    var nPages = Math.ceil(pxFullHeight / pxPageHeight);
+    // var ctx = canvas.getContext('2d');
+    // var pxFullHeight = canvas.height;
+    var pxPageHeight = Math.floor(canvas[0].width * this.prop.pageSize.inner.ratio);
+    // var nPages = Math.ceil(pxFullHeight / pxPageHeight);
 
     // Define pageHeight separately so it can be trimmed on the final page.
     var pageHeight = this.prop.pageSize.inner.height;
@@ -187,31 +244,31 @@ Worker.prototype.toPdf = function toPdf() {
     // Create a one-page canvas to split up the full image.
     var pageCanvas = document.createElement('canvas');
     var pageCtx = pageCanvas.getContext('2d');
-    pageCanvas.width = canvas.width;
+    pageCanvas.width = canvas[0].width;
     pageCanvas.height = pxPageHeight;
 
     // Initialize the PDF.
     this.prop.pdf = this.prop.pdf || new jsPDF(opt.jsPDF);
 
-    for (var page=0; page<nPages; page++) {
+    for (var page = 0; page < canvas.length; page++) {
       // Trim the final page to reduce file size.
-      if (page === nPages-1) {
-        pageCanvas.height = pxFullHeight % pxPageHeight;
-        pageHeight = pageCanvas.height * this.prop.pageSize.inner.width / pageCanvas.width;
-      }
+      // if (page === nPages - 1) {
+      //   pageCanvas.height = pxFullHeight % pxPageHeight;
+      //   pageHeight = pageCanvas.height * this.prop.pageSize.inner.width / pageCanvas.width;
+      // }
 
       // Display the page.
       var w = pageCanvas.width;
       var h = pageCanvas.height;
       pageCtx.fillStyle = 'white';
       pageCtx.fillRect(0, 0, w, h);
-      pageCtx.drawImage(canvas, 0, page*pxPageHeight, w, h, 0, 0, w, h);
+      //pageCtx.drawImage(canvas, 0, page * pxPageHeight, w, h, 0, 0, w, h);
+      pageCtx.drawImage(canvas[page], 0, 0, w, h, 0, 0, w, h);
 
       // Add the page to the PDF.
-      if (page)  this.prop.pdf.addPage();
+      if (page) this.prop.pdf.addPage();
       var imgData = pageCanvas.toDataURL('image/' + opt.image.type, opt.image.quality);
-      this.prop.pdf.addImage(imgData, opt.image.type, opt.margin[1], opt.margin[0],
-                        this.prop.pageSize.inner.width, pageHeight);
+      this.prop.pdf.addImage(imgData, opt.image.type, opt.margin[1], opt.margin[0], this.prop.pageSize.inner.width, pageHeight);
     }
   });
 };
