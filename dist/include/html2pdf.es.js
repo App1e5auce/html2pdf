@@ -280,36 +280,31 @@ Worker.prototype.toCanvas = function toCanvas() {
     this.toPages();
 
     var canvas_pages = this.prop.container.querySelectorAll('.pdf-page');
-    Array.prototype.forEach.call(canvas_pages, function canvas_page_loop(page, i) {
-      canvas_array[i] = html2canvas(page, options);
-    }, this);
+    // Array.prototype.forEach.call(canvas_pages, function canvas_page_loop(page, i) {
+    //   canvas_array[i] = html2canvas(page, options);
+    // }, this);
 
-    return Promise.all(canvas_array).then(function (data) {
-      return data;
-    });
+    // return Promise.all(canvas_array).then(function (data) {
+    //   return data;
+    // });
 
     // return new Promise(function(resolve, reject){
     //     console.log('die');
     // });
 
-    // return new Promise(function(resolve, reject) {
-    //     console.log('in promise');
-    //     console.log(canvas_pages);
-    //     var chain = Promise.resolve();
-    //     var real_count = 0;
-    //     for(var i = 0; i < canvas_pages.length; i++) {
-    //         chain = chain.then(function() {
-    //             console.log('starting ' + real_count);
-    //             console.log(canvas_pages[real_count]);
-    //             return html2canvas(canvas_pages[real_count], options).then(function(canvas){
-    //                 canvas_array[real_count] = canvas;
-    //                 console.log('ending ' + real_count +', we need ' + (canvas_pages.length - 1));
-    //                 if(real_count === (canvas_pages.length - 1)) resolve(canvas_array);
-    //                 real_count++;
-    //             });
-    //         });
-    //     }
-    // });
+    return new Promise(function (resolve, reject) {
+      var chain = Promise.resolve();
+      var real_count = 0;
+      for (var i = 0; i < canvas_pages.length; i++) {
+        chain = chain.then(function () {
+          return html2canvas(canvas_pages[real_count], options).then(function (canvas) {
+            canvas_array[real_count] = canvas;
+            if (real_count === canvas_pages.length - 1) resolve(canvas_array);
+            real_count++;
+          });
+        });
+      }
+    });
 
     //return html2canvas(this.prop.container, options);
   }).then(function toCanvas_post(canvas) {
@@ -349,36 +344,29 @@ Worker.prototype.toPdf = function toPdf() {
     var opt = this.opt;
 
     // Calculate the number of pages.
-    // var ctx = canvas.getContext('2d');
-    // var pxFullHeight = canvas.height;
-    var pxPageHeight = Math.floor(canvas[0].width * this.prop.pageSize.inner.ratio);
-    // var nPages = Math.ceil(pxFullHeight / pxPageHeight);
+    var nPages = canvas.length;
 
     // Define pageHeight separately so it can be trimmed on the final page.
     var pageHeight = this.prop.pageSize.inner.height;
 
-    // Create a one-page canvas to split up the full image.
-    var pageCanvas = document.createElement('canvas');
-    var pageCtx = pageCanvas.getContext('2d');
-    pageCanvas.width = canvas[0].width;
-    pageCanvas.height = pxPageHeight;
-
     // Initialize the PDF.
     this.prop.pdf = this.prop.pdf || new jsPDF(opt.jsPDF);
 
-    for (var page = 0; page < canvas.length; page++) {
-      // Trim the final page to reduce file size.
-      // if (page === nPages - 1) {
-      //   pageCanvas.height = pxFullHeight % pxPageHeight;
-      //   pageHeight = pageCanvas.height * this.prop.pageSize.inner.width / pageCanvas.width;
-      // }
+    for (var page = 0; page < nPages; page++) {
+      // Create a one-page canvas to split up the full image.
+      var pxPageHeight = Math.floor(canvas[page].width * this.prop.pageSize.inner.ratio);
+      var pageCanvas = document.createElement('canvas');
+      var pageCtx = pageCanvas.getContext('2d');
+      pageCanvas.width = canvas[page].width;
+      pageCanvas.height = pxPageHeight;
+      pageCanvas.height = canvas[page].height % pxPageHeight;
+      pageHeight = pageCanvas.height * this.prop.pageSize.inner.width / pageCanvas.width;
 
       // Display the page.
       var w = pageCanvas.width;
       var h = pageCanvas.height;
       pageCtx.fillStyle = 'white';
       pageCtx.fillRect(0, 0, w, h);
-      //pageCtx.drawImage(canvas, 0, page * pxPageHeight, w, h, 0, 0, w, h);
       pageCtx.drawImage(canvas[page], 0, 0, w, h, 0, 0, w, h);
 
       // Add the page to the PDF.
