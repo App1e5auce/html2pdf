@@ -324,7 +324,7 @@ Worker.prototype.save = function save(filename) {
   return this.thenList(prereqs).set(
     filename ? { filename: filename } : null
   ).then(function save_main() {
-    this.prop.pdf.save(this.opt.filename);
+    return this.prop.pdf;
   });
 };
 
